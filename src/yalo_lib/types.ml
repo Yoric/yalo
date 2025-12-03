@@ -73,9 +73,10 @@ and warning = {
 }
 
 and warning_state =
-  | Warning_disabled
-  | Warning_sleeping
-  | Warning_enabled
+  | Warning_disabled  (* cannot be enabled later *)
+  | Warning_sleeping  (* not currently enabled, but can be enabled locally *)
+  | Warning_enabled   (* currently enabled, but can be disabled locally *)
+  | Warning_forced    (* currently enabled, cannot be disabled *)
 
 and project = {
   project_name : string ;

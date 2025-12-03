@@ -449,6 +449,7 @@ let activate_warnings_and_linters
     begin
       match new_state with
       | Warning_enabled
+      | Warning_forced
       | Warning_sleeping -> w.w_level_error <- true
       | Warning_disabled -> w.w_level_error <- false
     end;
