@@ -86,6 +86,7 @@ module OCAML_AST_TRAVERSE = struct
     mutable class_structure : OCAML_AST.class_structure ast_lint_list ;
     mutable class_field : OCAML_AST.class_field ast_lint_list ;
     mutable class_declaration : OCAML_AST.class_declaration ast_lint_list ;
+    mutable module_expr : OCAML_AST.module_expr ast_lint_list ;
     mutable module_type : OCAML_AST.module_type ast_lint_list ;
     mutable signature_item : OCAML_AST.signature_item ast_lint_list ;
     mutable module_declaration : OCAML_AST.module_declaration ast_lint_list ;
@@ -104,6 +105,8 @@ module OCAML_AST_TRAVERSE = struct
     mutable module_binding : OCAML_AST.module_binding ast_lint_list ;
     mutable toplevel_directive : OCAML_AST.toplevel_directive ast_lint_list ;
     mutable directive_argument : OCAML_AST.directive_argument ast_lint_list ;
+    mutable with_constraint : OCAML_AST.with_constraint ast_lint_list ;
+    mutable type_kind : OCAML_AST.type_kind ast_lint_list ;
   }
 
   open OCAML_AST
@@ -126,7 +129,7 @@ module OCAML_AST_TRAVERSE = struct
     (* | Node_module_coercion of module_coercion *)
     | Node_module_declaration of module_declaration
     | Node_module_substitution of module_substitution
-    (* | Node_module_expr of module_expr *)
+    | Node_module_expr of module_expr
     | Node_module_type of module_type
     | Node_module_type_declaration of module_type_declaration
     | Node_package_type of package_type
@@ -144,11 +147,11 @@ module OCAML_AST_TRAVERSE = struct
     (* | Node_type_declarations of (rec_flag * type_declaration list) *)
     | Node_type_extension of type_extension
     | Node_type_exception of type_exception
-    (* | Node_type_kind of type_kind *)
+    | Node_type_kind of type_kind
     | Node_value_binding of value_binding
     (* | Node_value_bindings of (rec_flag * value_binding list) *)
     | Node_value_description of value_description
-    (* | Node_with_constraint of with_constraint *)
+    | Node_with_constraint of with_constraint
 
     | Node_attribute of attribute
     | Node_extension of extension
@@ -180,7 +183,7 @@ module OCAML_AST_TRAVERSE = struct
     (* | Node_module_coercion _ -> "module_coercion" *)
     | Node_module_declaration _ -> "module_declaration"
     | Node_module_substitution _ -> "module_substitution"
-    (* | Node_module_expr _ -> "module_expr" *)
+    | Node_module_expr _ -> "module_expr"
     | Node_module_type _ -> "module_type"
     | Node_module_type_declaration _ -> "module_type_declaration"
     | Node_package_type _ -> "package_type"
@@ -198,11 +201,11 @@ module OCAML_AST_TRAVERSE = struct
     (* | Node_type_declarations _ -> "type_declarations" *)
     | Node_type_extension _ -> "type_extension"
     | Node_type_exception _ -> "type_exception"
-    (* | Node_type_kind _ -> "type_kind" *)
+    | Node_type_kind _ -> "type_kind"
     | Node_value_binding _ -> "value_binding"
     (* | Node_value_bindings _ -> "value_bindings" *)
     | Node_value_description _ -> "value_description"
-    (* | Node_with_constraint _ -> "with_constraint" *)
+    | Node_with_constraint _ -> "with_constraint"
     | Node_attribute _ -> "attribute"
     | Node_payload _ -> "payload"
     | Node_letop _ -> "letop"

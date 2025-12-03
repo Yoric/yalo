@@ -379,8 +379,8 @@
   {
     "id": "YALO+15 fun_fun",
     "namespace": "YALO",
-    "group": "typed",
-    "tags": [ "typed" ],
+    "group": "untyped",
+    "tags": [ "untyped" ],
     "level": "warn",
     "impl": "yalo_plugin_YALO",
     "docs": "### Message\nAll arguments of an immediate fun should be defined at once\n### Description\n",

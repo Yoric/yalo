@@ -157,9 +157,13 @@ let lint_sig =
 
 let arg_lint_ast_from_cmt = ref false
 let arg_lint_ast_from_src = ref true
-
+let arg_prefer_untyped = ref false
 let () =
   YALO.add_plugin_args plugin Ezcmd.V2.[
+
+      ["prefer-untyped"], EZCMD.Set arg_prefer_untyped,
+      EZCMD.info "When an analysis is available typed and untyped, \
+                  prefer the untyped version (default for ppx)";
 
       ["lint-ast-from-cmt"], EZCMD.Set arg_lint_ast_from_cmt,
       EZCMD.info "Call parsetree linters on cmt files";

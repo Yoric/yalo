@@ -70,6 +70,7 @@ end = struct
       class_declaration = [] ;
       module_type = [] ;
       signature_item = [] ;
+      module_expr = [] ;
       module_declaration = [] ;
       module_substitution = [] ;
       module_type_declaration = [] ;
@@ -81,6 +82,8 @@ end = struct
       module_binding = [] ;
       toplevel_directive = [] ;
       directive_argument = [] ;
+      with_constraint = [];
+      type_kind = [];
     }
 
   let push node =
@@ -107,6 +110,7 @@ end = struct
   (*  let module_coercion x = Node_module_coercion x *)
   let module_declaration x = Node_module_declaration x
   let module_substitution x = Node_module_substitution x
+  let module_expr x = Node_module_expr x
   let module_type x = Node_module_type x
   let module_type_declaration x = Node_module_type_declaration x
   let package_type x = Node_package_type x
@@ -135,6 +139,8 @@ end = struct
   let include_declaration x =  Node_include_declaration x
   let toplevel_directive x =  Node_toplevel_directive x
   let directive_argument x =  Node_directive_argument x
+  let type_kind x =  Node_type_kind x
+  let with_constraint x =  Node_with_constraint x
 
   let apply_lints_with_loc ctx ~lints x ~loc =
     List.iter (fun (linter,f) ->
@@ -286,6 +292,10 @@ end = struct
         apply_lints super#class_declaration ctx
           ~lints:ctx.class_declaration class_declaration x
 
+      method! module_expr x ctx =
+        apply_lints super#module_expr ctx
+          ~lints:ctx.module_expr module_expr x
+
       method! module_type x ctx =
         apply_lints super#module_type ctx
           ~lints:ctx.module_type module_type x
@@ -341,6 +351,13 @@ end = struct
       method! directive_argument x ctx =
         apply_lints super#directive_argument ctx
           ~lints:ctx.directive_argument directive_argument x
+
+      method! type_kind x ctx =
+        apply_lints super#type_kind ctx ~lints:ctx.type_kind type_kind x
+
+      method! with_constraint x ctx =
+        apply_lints super#with_constraint ctx ~lints:ctx.with_constraint
+          with_constraint x
 
     end
 

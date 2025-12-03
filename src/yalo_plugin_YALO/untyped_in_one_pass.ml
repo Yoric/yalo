@@ -30,6 +30,7 @@ type 'a warning_config = {
   w_list_append_for_one : 'a ;
   w_useless_sprintf : 'a ;
   w_suspicious_for_zero_to_len : 'a ;
+  w_fun_fun : 'a ;
 }
 
 let msg = {
@@ -64,6 +65,8 @@ l =/<=> _"|};
     {|'Printf.sprintf "%s"' is identify for string|} ;
   w_suspicious_for_zero_to_len =
     {|'for 0 to len do' is suspicious, should be 'len-1'|};
+  w_fun_fun =
+    {|All arguments of an immediate fun should be defined at once|};
 }
 
 let no_nested_ifthenelse () =
@@ -79,6 +82,29 @@ let rec catch_all cases =
   | { pc_lhs = { ppat_desc = Ppat_any; _ };
       pc_guard = None ; _ } :: _ -> true
   | _ :: cases -> catch_all cases
+
+
+[%%if ocaml_version < (5,1,0)]
+let check_fun_fun e =
+  match e.pexp_desc with
+    Pexp_fun (_, _, _, { pexp_desc = Pexp_function _ ; _ }) ->
+      true
+  | Pexp_fun (_, _, _, { pexp_desc = Pexp_fun _ ; pexp_loc ;_ }) ->
+      not pexp_loc.loc_ghost
+  | _ -> false
+[%%else]
+let check_fun_fun e =
+  match e.pexp_desc with
+  | Pexp_function (_ :: _, _,
+                   Pfunction_body
+                     { pexp_desc = Pexp_function _ ;
+                       pexp_loc ; _ ;
+                     })
+    when e.pexp_loc.loc_ghost && not pexp_loc.loc_ghost
+    -> true
+  | _ -> false
+[%%endif]
+
 
 (* to prevent some patterns from hiding other warnings, find_warning
    returns a new config without the warning it has found, so that it
@@ -368,6 +394,9 @@ let find_warning config e =
     ->
       Some (w, None, { config with w_suspicious_for_zero_to_len = None; })
 
+  | { w_fun_fun = Some w ; _ }, _ when check_fun_fun e ->
+      Some (w, None, { config with w_fun_fun = None; })
+
   | _ -> None
 
 let register ns
@@ -491,6 +520,14 @@ let register ns
           id ~tags ~msg: msg.w_suspicious_for_zero_to_len
   in
 
+  let w_fun_fun =
+    match config.w_fun_fun with
+    | None -> None
+    | Some id -> some @@
+        YALO.new_warning ns ~name:"fun_fun"
+          id ~tags ~msg: msg.w_fun_fun
+  in
+
   let config = {
     w_string_concat ;
     w_incr_decr ;
@@ -506,6 +543,7 @@ let register ns
     w_list_append_for_one ;
     w_useless_sprintf ;
     w_suspicious_for_zero_to_len ;
+    w_fun_fun ;
   } in
 
   OCAML_LANG.new_ast_impl_traverse_linter ns

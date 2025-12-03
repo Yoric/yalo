@@ -27,8 +27,12 @@ let default_stdlib_infix =
     "||" ; "&&" ;
     ":="; "!";
     "@" ;
-    "@@"; "|>"
+    "@@"; "|>" ;
   ]
+
+let internal_infix = [
+  "*sth*" ; "*opt*" ;
+]
 
 let register ns section
     ?(name="forbidden_infix")
@@ -64,12 +68,13 @@ let register ns section
   let allowed_infix_operators =
     StringSet.of_list (!!allowed_infix
                        @
+                       internal_infix
+                       @
                        List.map (fun s ->
                            "Stdlib." ^ s)
                          !!allowed_stdlib_infix) in
 
-  let check_infix ~file ~linter path loc =
-    let name = Path.name path in
+  let check_infix ~file ~linter name loc =
     if not (StringSet.mem name allowed_infix_operators) then
       YALO.warn ~loc ~file ~linter w
         ~msg:(Printf.sprintf
@@ -78,32 +83,56 @@ let register ns section
                  allowed_infix } otherwise)"
                 name)
   in
-  OCAML_LANG.new_tast_impl_traverse_linter ns
-    ("check:typed:" ^ YALO_WARNING.name w)
-    ~warnings:[ w ]
-    OCAML_TAST.(fun ~file ~linter traverse ->
-        let check_expr ~file:_ ~linter:_ expr =
-          match expr.exp_desc with
-          | Texp_ident (p, longident, _) ->
-              begin
-                match Longident.flatten longident.txt with
-                | [ "*sth*" | "*opt*" ] -> ()
-                | [ name ] when
-                    begin
-                      match name.[0] with
-                      | 'a'..'z' | '_' -> false
-                      | _ -> true
-                    end
-                  ->
-                    check_infix ~file ~linter p expr.exp_loc
-                | _ -> ()
-              end
-          | _ -> ()
-        in
-        let binding_op ~file ~linter bo =
-          check_infix ~file ~linter bo.bop_op_path bo.bop_loc
-        in
-        traverse.expression <- (linter, check_expr) :: traverse.expression ;
-        traverse.binding_op <- (linter, binding_op) :: traverse.binding_op
+  if OCAML_LANG.is_running_as_ppx () then
+    OCAML_LANG.new_ast_impl_traverse_linter ns
+      ("check:typed:" ^ YALO_WARNING.name w)
+      ~warnings:[ w ]
+      OCAML_AST.(fun ~file:_ ~linter traverse ->
+          let check_expr ~file ~linter:_ expr =
+            match expr.pexp_desc with
+            | Pexp_ident longident ->
+                let name = longident_name longident.txt in
+                if not @@ String.contains name '.' &&
+                   (
+                     match name.[0] with
+                     | 'a'..'z' | '_' -> false
+                     | _ -> true
+                   ) then
+                  check_infix ~file ~linter name expr.pexp_loc
+            | _ -> ()
+          in
+          let binding_op ~file ~linter bo =
+            check_infix ~file ~linter (bo.pbop_op.txt) bo.pbop_loc
+          in
+          traverse.expression <- (linter, check_expr) :: traverse.expression ;
+          traverse.binding_op <- (linter, binding_op) :: traverse.binding_op
+        )
+  else
+    OCAML_LANG.new_tast_impl_traverse_linter ns
+      ("check:typed:" ^ YALO_WARNING.name w)
+      ~warnings:[ w ]
+      OCAML_TAST.(fun ~file ~linter traverse ->
+          let check_expr ~file:_ ~linter:_ expr =
+            match expr.exp_desc with
+            | Texp_ident (p, longident, _) ->
+                begin
+                  match Longident.flatten longident.txt with
+                  | [ name ] when
+                      begin
+                        match name.[0] with
+                        | 'a'..'z' | '_' -> false
+                        | _ -> true
+                      end
+                    ->
+                      check_infix ~file ~linter (Path.name p) expr.exp_loc
+                  | _ -> ()
+                end
+            | _ -> ()
+          in
+          let binding_op ~file ~linter bo =
+            check_infix ~file ~linter (Path.name bo.bop_op_path) bo.bop_loc
+          in
+          traverse.expression <- (linter, check_expr) :: traverse.expression ;
+          traverse.binding_op <- (linter, binding_op) :: traverse.binding_op
 
-      )
+        )

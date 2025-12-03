@@ -39,7 +39,7 @@ module OCAML_LANG = struct
       | None -> ()
       | Some set -> is_running_as_ppx := set
     end;
-    !is_running_as_ppx
+    !is_running_as_ppx || !Main.arg_prefer_untyped
 
   let ocaml = Main.ocaml
 
