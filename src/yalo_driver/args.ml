@@ -40,6 +40,9 @@ let arg_autofix_inplace = ref (None : bool option)
 let arg_output = ref (None : string option)
 let arg_summary = ref @@ Some 30
 
+let arg_output_commands_rst = ref false
+let arg_output_options_rst = ref false
+
 let parse_initial_args args =
   let rec iter args =
     match args with
@@ -74,6 +77,12 @@ let parse_initial_args args =
     | [] | [ "--help" ] ->
         arg_no_load_plugins := true;
         "help", []
+    | "commands-rst" :: args ->
+        arg_output_commands_rst := true ;
+        iter args
+    | "options-rst" :: args ->
+        arg_output_options_rst := true ;
+        iter args
     | cmd :: args -> cmd, args
   in
   let cmd, args = iter args in
@@ -104,7 +113,7 @@ let initial_arg_specs = [
   EZCMD.info
     ~docs:"INITIAL ARGUMENTS"
     ~docv:"PROFILE"
-    "Specify profile to load (a yalo-<PROFILE>.conf file)";
+    "Specify a profile to load (a yalo-<PROFILE>.conf file)";
 
 
   [ "I" ; "include-dir" ], EZCMD.String (fun _s ->
@@ -120,7 +129,7 @@ let initial_arg_specs = [
   EZCMD.info
     ~docs:"INITIAL ARGUMENTS"
     ~docv:"CONFIG-FILE"
-    "Load CONFIG-FILE instead of searching for .yalocaml";
+    "Load CONFIG-FILE instead of searching for .yaloconf";
 
   [ "no-load-plugins" ], EZCMD.Unit (fun () ->
       initial_arg_too_late "--no-load-plugins"),

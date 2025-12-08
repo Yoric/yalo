@@ -30,40 +30,70 @@ type 'a warning_config = {
   w_list_append_for_one : 'a ;
   w_useless_sprintf : 'a ;
   w_suspicious_for_zero_to_len : 'a ;
+  w_fun_fun : 'a ;
 }
 
-let msg = {
-  w_string_concat =
-    {|(a ^ b ^ c) should be replaced by Printf.sprintf "%s%s%s" a b c|} ;
-  w_incr_decr =
-    {|"x := !x +/- 1" should be replaced by "incr/decr x"|} ;
-  w_comp_boolean =
-    {|comparison with a boolean should always be simplified|} ;
-  w_failwith_sprintf =
+let w_string_concat = YALO.mkdesc ~name:"string_concat"
+    {|(a ^ b ^ c) should be replaced by Printf.sprintf "%s%s%s" a b c|}
+    ~what_it_does:"Checks for the concatenation of more than 2 strings using ^"
+    ~why_restrict_this:
+      "There is a performance issue to using the (^) operator multiple \
+       times in the same expression, as it will allocate a new string \
+       at every call. Instead, you can use `Printf.sprintf \"%s%s%s\"` \
+       that will only allocate for the result once."
+    ~example:
+      "```\nlet s = a ^ \".\" ^ b\n```\n should be replaced by \
+       \n```\nlet s = Printf.sprintf \"%s.%s\" a b\n```\n"
+let w_incr_decr = YALO.mkdesc ~name:"incr_decr"
+    {|"x := !x +/- 1" should be replaced by "incr/decr x"|}
+let w_comp_boolean = YALO.mkdesc ~name:"comp_boolean"
+    {|comparison with a boolean should always be simplified|}
+let w_failwith_sprintf = YALO.mkdesc ~name:"failwith_sprintf"
     "\"failwith (sprintf [...])\" should be replaced by \
-     \"Printf.ksprintf failwith [...]\"" ;
-  w_list_length_comp_zero =
-    {|"String.length l =/<> 0" should be replaced by "l =/<> []"|} ;
-  w_list_length_comp_any =
+     \"Printf.ksprintf failwith [...]\""
+let w_list_length_comp_zero = YALO.mkdesc ~name:"list_length_comp_zero"
+    {|"String.length l =/<> 0" should be replaced by "l =/<> []"|}
+let  w_list_length_comp_any = YALO.mkdesc ~name:"list_length_comp_any"
     {|"String.length l <=> _" should be replaced by "List.compare_length_with \
-l =/<=> _"|};
-  w_list_length_comp_list_length =
+l =/<=> _"|}
+let w_list_length_comp_list_length =
+  YALO.mkdesc ~name:"list_length_comp_list_length"
     {|"String.length l1 <=> List.length l2" should be replaced by \
-"List.compare_lengths l1 l2 <=> 0"|} ;
-  w_then_bool_else_bool =
-    {|"if then bool else bool" should be simplified|} ;
-  w_then_or_else_bool =
-    {|bool in then/else should be simplified with && or |||} ;
-  w_else_unit =
-    {|"else unit" is useless here|} ;
-  w_try_catch_all =
-    {|"try with _" is dangerous, raised exceptions should be used or printed|} ;
-  w_list_append_for_one =
-    {|"[e]@list" should be replaced by "e :: list"|} ;
-  w_useless_sprintf =
-    {|'Printf.sprintf "%s"' is identify for string|} ;
-  w_suspicious_for_zero_to_len =
-    {|'for 0 to len do' is suspicious, should be 'len-1'|};
+"List.compare_lengths l1 l2 <=> 0"|}
+let w_then_bool_else_bool = YALO.mkdesc ~name:"then_bool_else_bool"
+    {|"if then bool else bool" should be simplified|}
+let w_then_or_else_bool = YALO.mkdesc ~name:"then_or_else_bool"
+    {|bool in then/else should be simplified with && or |||}
+let w_else_unit = YALO.mkdesc ~name:"else_unit"
+    {|"else unit" is useless here|}
+let w_try_catch_all = YALO.mkdesc ~name:"try_catch_all"
+    {|"try with _" is dangerous, raised exceptions should be used or printed|}
+let w_list_append_for_one = YALO.mkdesc ~name:"list_append_for_one"
+    {|"[e]@list" should be replaced by "e :: list"|}
+let w_useless_sprintf = YALO.mkdesc ~name:"useless_sprintf"
+    {|'Printf.sprintf "%s"' is identify for string|}
+let w_suspicious_for_zero_to_len = YALO.mkdesc
+    ~name: "suspicious_for_zero_to_len"
+    {|'for 0 to len do' is suspicious, should be 'len-1'|}
+let w_fun_fun = YALO.mkdesc ~name:"fun_fun"
+    {|All arguments of an immediate fun should be defined at once|}
+
+let msg = {
+  w_string_concat ;
+  w_incr_decr ;
+  w_comp_boolean ;
+  w_failwith_sprintf ;
+  w_list_length_comp_zero ;
+  w_list_length_comp_any ;
+  w_list_length_comp_list_length ;
+  w_then_bool_else_bool ;
+  w_then_or_else_bool ;
+  w_else_unit ;
+  w_try_catch_all ;
+  w_list_append_for_one ;
+  w_useless_sprintf ;
+  w_suspicious_for_zero_to_len ;
+  w_fun_fun ;
 }
 
 let no_nested_ifthenelse () =
@@ -79,6 +109,29 @@ let rec catch_all cases =
   | { pc_lhs = { ppat_desc = Ppat_any; _ };
       pc_guard = None ; _ } :: _ -> true
   | _ :: cases -> catch_all cases
+
+
+[%%if ocaml_version < (5,1,0)]
+let check_fun_fun e =
+  match e.pexp_desc with
+    Pexp_fun (_, _, _, { pexp_desc = Pexp_function _ ; _ }) ->
+      true
+  | Pexp_fun (_, _, _, { pexp_desc = Pexp_fun _ ; pexp_loc ;_ }) ->
+      not pexp_loc.loc_ghost
+  | _ -> false
+[%%else]
+let check_fun_fun e =
+  match e.pexp_desc with
+  | Pexp_function (_ :: _, _,
+                   Pfunction_body
+                     { pexp_desc = Pexp_function _ ;
+                       pexp_loc ; _ ;
+                     })
+    when e.pexp_loc.loc_ghost && not pexp_loc.loc_ghost
+    -> true
+  | _ -> false
+[%%endif]
+
 
 (* to prevent some patterns from hiding other warnings, find_warning
    returns a new config without the warning it has found, so that it
@@ -368,10 +421,13 @@ let find_warning config e =
     ->
       Some (w, None, { config with w_suspicious_for_zero_to_len = None; })
 
+  | { w_fun_fun = Some w ; _ }, _ when check_fun_fun e ->
+      Some (w, None, { config with w_fun_fun = None; })
+
   | _ -> None
 
 let register ns
-    ~tags
+    ~tags:common_tags
     config
   =
   let warnings = ref [] in
@@ -379,116 +435,73 @@ let register ns
     warnings := x :: !warnings ;
     Some x
   in
-  let w_string_concat =
-    match config.w_string_concat with
+  let warning_of_desc config desc =
+    match config with
     | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"string_concat"
-          id ~tags ~msg: msg.w_string_concat
+    | Some id ->
+        some @@
+        YALO.new_warning_of_desc ns ~desc id ~tags:common_tags
+  in
+  let w_string_concat =
+    warning_of_desc config.w_string_concat msg.w_string_concat
   in
 
   let w_incr_decr =
-    match config.w_incr_decr with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"incr_decr"
-          id ~tags ~msg: msg.w_incr_decr
+    warning_of_desc config.w_incr_decr msg.w_incr_decr
   in
 
   let w_comp_boolean =
-    match config.w_comp_boolean with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"comp_boolean"
-          id ~tags ~msg: msg.w_comp_boolean
+    warning_of_desc config.w_comp_boolean msg.w_comp_boolean
   in
 
   let w_failwith_sprintf =
-    match config.w_failwith_sprintf with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"failwith_sprintf"
-          id ~tags ~msg: msg.w_failwith_sprintf
+    warning_of_desc config.w_failwith_sprintf msg.w_failwith_sprintf
   in
 
   let w_list_length_comp_zero =
-    match config.w_list_length_comp_zero with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"list_length_comp_zero"
-          id ~tags ~msg: msg.w_list_length_comp_zero
+    warning_of_desc config.w_list_length_comp_zero msg.w_list_length_comp_zero
   in
 
   let w_list_length_comp_any =
-    match config.w_list_length_comp_any with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"list_length_comp_any"
-          id ~tags ~msg: msg.w_list_length_comp_any
+    warning_of_desc config.w_list_length_comp_any msg.w_list_length_comp_any
   in
 
   let w_list_length_comp_list_length =
-    match config.w_list_length_comp_list_length with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"list_length_comp_list_length"
-          id ~tags ~msg: msg.w_list_length_comp_list_length
+    warning_of_desc config.w_list_length_comp_list_length
+      msg.w_list_length_comp_list_length
   in
 
   let w_then_bool_else_bool =
-    match config.w_then_bool_else_bool with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"then_bool_else_bool"
-          id ~tags ~msg: msg.w_then_bool_else_bool
+    warning_of_desc config.w_then_bool_else_bool msg.w_then_bool_else_bool
   in
 
   let w_then_or_else_bool =
-    match config.w_then_or_else_bool with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"then_or_else_bool"
-          id ~tags ~msg: msg.w_then_or_else_bool
+    warning_of_desc config.w_then_or_else_bool msg.w_then_or_else_bool
   in
 
   let w_else_unit =
-    match config.w_else_unit with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"else_unit"
-          id ~tags ~msg: msg.w_else_unit
+    warning_of_desc config.w_else_unit msg.w_else_unit
   in
 
   let w_try_catch_all =
-    match config.w_try_catch_all with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"try_catch_all"
-          id ~tags ~msg: msg.w_try_catch_all
+    warning_of_desc config.w_try_catch_all msg.w_try_catch_all
   in
 
   let w_list_append_for_one =
-    match config.w_list_append_for_one with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"list_append_for_one"
-          id ~tags ~msg: msg.w_list_append_for_one
+    warning_of_desc config.w_list_append_for_one msg.w_list_append_for_one
   in
 
   let w_useless_sprintf =
-    match config.w_useless_sprintf with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"useless_sprintf"
-          id ~tags ~msg: msg.w_useless_sprintf
+    warning_of_desc config.w_useless_sprintf msg.w_useless_sprintf
   in
 
   let w_suspicious_for_zero_to_len =
-    match config.w_suspicious_for_zero_to_len with
-    | None -> None
-    | Some id -> some @@
-        YALO.new_warning ns ~name:"suspicious_for_zero_to_len"
-          id ~tags ~msg: msg.w_suspicious_for_zero_to_len
+    warning_of_desc config.w_suspicious_for_zero_to_len
+      msg.w_suspicious_for_zero_to_len
+  in
+
+  let w_fun_fun =
+    warning_of_desc config.w_fun_fun msg.w_fun_fun
   in
 
   let config = {
@@ -506,6 +519,7 @@ let register ns
     w_list_append_for_one ;
     w_useless_sprintf ;
     w_suspicious_for_zero_to_len ;
+    w_fun_fun ;
   } in
 
   OCAML_LANG.new_ast_impl_traverse_linter ns

@@ -16,6 +16,23 @@ prefix). It should prevent using identifiers exported by toplevel
 `open` statements. As an exception, identifiers exported by inner
 `let-open` are allowed to be used without qualification.  *)
 
+let stdlib_idents =
+  [
+    "exit" ; "ref" ; "not" ; "failwith" ; "raise" ;
+    "fst" ; "snd" ; "compare" ;
+    "int_of_string" ; "string_of_int" ;
+    "incr"; "decr" ;
+    "min"; "max" ;
+    "stdin"; "stdout" ; "stderr";
+    "open_in" ; "open_out" ; "open_in_bin"; "open_out_bin" ;
+    "close_in" ; "close_out" ;
+    "at_exit" ;
+    "print_int" ; "print_string" ; "print_char" ;
+    "ignore" ;
+    "output_string" ;
+  ]
+
+
 open Yalo.V1
 open Yalo_plugin_ocaml.V1
 open YALO_INFIX
@@ -72,20 +89,7 @@ let register ns
         ~short_help:"A list of identifiers that are authorized to be \
                      used without qualification, usually because they \
                      come from Stdlib.Pervasives"
-        YALO_CONFIG.string_list_option
-        [
-          "exit" ; "ref" ; "not" ; "failwith" ; "raise" ;
-          "fst" ; "snd" ; "compare" ;
-          "int_of_string" ; "string_of_int" ;
-          "incr"; "decr" ;
-          "min"; "max" ;
-          "stdin"; "stdout" ; "stderr";
-          "open_in" ; "open_out" ; "open_in_bin"; "open_out_bin" ;
-          "close_in" ; "close_out" ;
-          "at_exit" ;
-          "print_int" ; "print_string" ; "print_char" ;
-          "ignore" ;
-        ]
+        YALO_CONFIG.string_list_option stdlib_idents
     in
 
     let stdlib =

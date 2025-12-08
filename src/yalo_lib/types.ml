@@ -18,6 +18,7 @@ type plugin = {
   plugin_name : string;
   plugin_version : string ;
   mutable plugin_languages : language StringMap.t ;
+  mutable plugin_namespaces : namespace StringMap.t ;
   mutable plugin_args :
     (string list * Ezcmd.V2.EZCMD.spec *
      Ezcmd.V2.EZCMD.TYPES.info) list ;
@@ -73,9 +74,10 @@ and warning = {
 }
 
 and warning_state =
-  | Warning_disabled
-  | Warning_sleeping
-  | Warning_enabled
+  | Warning_disabled  (* cannot be enabled later *)
+  | Warning_sleeping  (* not currently enabled, but can be enabled locally *)
+  | Warning_enabled   (* currently enabled, but can be disabled locally *)
+  | Warning_forced    (* currently enabled, cannot be disabled *)
 
 and project = {
   project_name : string ;
@@ -236,3 +238,15 @@ type message_format =
   | Format_Sarif
   | Format_Short
   | Format_Summary
+
+
+type warning_desc = {
+  desc_name : string ;
+  desc_msg : string ;
+  desc_tags : string list ;
+  desc_what_it_does : string option ;
+  desc_why_restrict_this : string option ;
+  desc_known_issues : string option ;
+  desc_example : string option ;
+  desc_configuration : (string * string) list ;
+}

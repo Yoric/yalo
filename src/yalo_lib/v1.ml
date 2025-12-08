@@ -31,6 +31,7 @@ module YALO_TYPES = struct
   type folder = Types.folder
   type filepath = Types.filepath
   type fs = Types.fs
+  type warning_desc = Types.warning_desc
 
   type scan_kind = Types.scan_kind =
     | Scan_disabled
@@ -107,6 +108,12 @@ module YALO = struct
 
   let mkloc = Engine.mkloc
 
+  let mkdesc = Engine.mkdesc
+  let new_warning_of_desc ns ?(tags=[]) ?set_by_default ~desc id =
+    let tags = tags @ List.map new_tag desc.desc_tags in
+    new_warning ns ~name:desc.desc_name ?set_by_default
+      id ~tags ~msg:desc.desc_msg ~desc:(Engine.desc_of_desc desc)
+
   module CONFIG = struct
     let create_section = Config.create_config_section
     let create_option = Config.create_config_option
@@ -132,6 +139,10 @@ module YALO = struct
       | None -> ()
     end;
     Printf.eprintf fmt
+
+  let new_command _plugin sub =
+    GState.plugin_commands := sub :: !GState.plugin_commands
+
 end
 
 module YALO_LANG = struct

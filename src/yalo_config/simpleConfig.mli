@@ -27,7 +27,7 @@ val load : config_file -> unit
 
 (* [append file filename] loads the specified option file. All options whose
 value is specified in this file are updated. *)
-val append : config_file -> FileAbstract.t -> unit
+val append : config_file -> ?override:bool -> FileAbstract.t -> unit
 
 (*d [save ()] saves all the options values to the option file. *)
 val save : config_file -> unit
@@ -59,6 +59,8 @@ type 'a config_option
 type 'a option_class
 
 val create_option : config_file -> string list -> ?short_help:string ->            string list -> ?level:int -> 'a option_class -> 'a -> 'a config_option
+
+val set_unloaded : 'a config_option -> unit
 
 (* Basic classes of options *)
 

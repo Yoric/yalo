@@ -24,24 +24,69 @@ let section = YALO.CONFIG.create_section
 
 let () =
   let w1 =
-    YALO.new_warning ns
-      ~name:"bad_indent" 1
+    YALO.new_warning_of_desc ns 1
+      ~desc:(YALO.mkdesc
+               ~name:"bad_indent"
+               "Wrong indentation on this line (first warning)"
+               ~what_it_does:
+                 "Checks if the file is indented in the same way as by \
+                  ocp-indent. First warning."
+               ~why_restrict_this:
+                 "If different developers are working on the same \
+                  file, changes of indentation due to using different \
+                  tools may create useless changes in the commits, \
+                  making the review process harder."
+               ~known_issues:
+                 "This warning is raised only once per source file, at \
+                  the first indentation problem. OCPINDENT+2 can be \
+                  activated for more warnings."
+            )
       ~tags:[ tag_content ]
-      ~msg:"Wrong indentation on this line (first warning)"
   in
   let w2 =
-    YALO.new_warning ns
-      ~name:"bad_indent_2_to_5" 2
+    YALO.new_warning_of_desc ns 2
+      ~desc:(YALO.mkdesc
+               ~name:"bad_indent_2_to_5"
+               "Wrong indentation on this line (more than 2 warnings)"
+               ~what_it_does:
+                 "Checks if the file is indented in the same way as by \
+                  ocp-indent. Second to fifth problem."
+               ~why_restrict_this:
+                 "If different developers are working on the same \
+                  file, changes of indentation due to using different \
+                  tools may create useless changes in the commits, \
+                  making the review process harder."
+               ~known_issues:
+                 "This warning is raised at most 4 time per source \
+                  file, at the second and later indentation \
+                  problems. OCPINDENT+3 can be activated for more \
+                  warnings."
+            )
       ~tags:[ tag_content ]
       ~set_by_default: false
-      ~msg:"Wrong indentation on this line (more than 2 warnings)"
   in
   let w3 =
-    YALO.new_warning ns
-      ~name:"bad_indent_above_6" 3
+    YALO.new_warning_of_desc ns
+      ~desc:(YALO.mkdesc
+               ~name:"bad_indent_above_6"
+               "Wrong indentation on this line (more than 2 warnings)"
+               ~what_it_does:
+                 "Checks if the file is indented in the same way as by \
+                  ocp-indent. Sixth problem and later."
+               ~why_restrict_this:
+                 "If different developers are working on the same \
+                  file, changes of indentation due to using different \
+                  tools may create useless changes in the commits, \
+                  making the review process harder."
+               ~known_issues:
+                 "This warning is only raised after at least 5 \
+                  problems. It is usually a bad idea to enable this \
+                  warning, as removing these problems manually is not \
+                  a good idea after 5 occurrences."
+            )
       ~tags:[ tag_content ]
       ~set_by_default: false
-      ~msg:"Wrong indentation on this line (more than 6 warnings)"
+      3
   in
 
   OCAML_LANG.new_src_content_linter ns "check:indent"

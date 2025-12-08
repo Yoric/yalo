@@ -37,9 +37,9 @@ let arg_specs = [
   EZCMD.String (function
       | "context" -> Args.arg_message_format := Format_Context
       | "human" -> Args.arg_message_format := Format_Human
-      | "sarif" -> Args.arg_message_format := Format_Sarif
       | "short" -> Args.arg_message_format := Format_Short
       | "summary" -> Args.arg_message_format := Format_Summary
+      | "sarif" -> Args.arg_message_format := Format_Sarif
       (* TODO Clippy: human, short, json, json-diagnostic-short,
          json-diagnostic-rendered-ansi, json-render-diagnostics *)
       | s ->
@@ -48,7 +48,8 @@ let arg_specs = [
           exit 2
     ),
   EZCMD.info ~docv:"FORMAT"
-    "Set message format to FORMAT: human, short, sarif(JSON)";
+    "Set message format to FORMAT: context (default), human, short, \
+     summary, sarif";
 
   [ "p" ; "package" ],
   EZCMD.String (fun s -> Args.arg_projects := !Args.arg_projects @ [ s ]),
@@ -88,7 +89,7 @@ let cmd command_name =
     @ Args.common_arg_specs
     @ !Yalo.GState.all_plugins_args
   in
-
+  let li a b = `I (a,b) in
   EZCMD.sub
     command_name
     ~args
@@ -96,8 +97,44 @@ let cmd command_name =
     ~man:[
       `S "DESCRIPTION";
       `Blocks [
-        `P ""
+        `P "Thie command will perform the following actions";
+        `P "Early actions (common to all sub-commands):";
+        li "1."
+          "Lookup the .yaloconf file in the containing folders. if \
+           located, chdir to the corresponding directory." ;
+        li "2."
+          "If a configuration file was found, load the corresponding \
+           file. If profiles are specified in the configuration file, \
+           recursively load the profiles too.";
+        li "3."
+          "If plugins are specified on command line, in the \
+           configuration file or in profiles specified in the \
+           configuration file, load the plugins";
+        `P "Specific actions:";
+        li "a."
+          "Enable/disable warnings following command line and \
+           configuration options. Enable only linters for enabled \
+           warnings.";
+        li "b."
+          "Scan the project tree, looking for files to lint. Each file \
+           is associated with a set of including projects.";
+        li "c."
+          "Lint all the files of selected projects";
+        li "d."
+          "Display or output warnings";
+        li "e."
+          "Apply autofix patches if available and the --autofix option \
+           was used";
       ];
+      `S "INITIAL ARGUMENTS";
+      `Blocks [
+        `P "Some arguments MUST be specified before the sub-command \
+            name (-L,-P,-I,-C,--no-load-plugins). The reason is that \
+            these arguments are used to define which and how plugins \
+            should be loaded, either directly or though configuration \
+            files, and plugins can define new arguments for \
+            sub-commands and even new sub-commands"
+      ]
     ]
     (fun () ->
 

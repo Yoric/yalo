@@ -38,6 +38,7 @@ let new_plugin ?(version="0.1.0") ?(args=[]) plugin_name =
   let ns = { plugin_name ;
              plugin_version = version ;
              plugin_languages = StringMap.empty ;
+             plugin_namespaces = StringMap.empty ;
              plugin_args = args;
            }
   in
@@ -119,6 +120,8 @@ let new_namespace plugin ns_name =
              ns_linters = StringMap.empty;
            } in
   Hashtbl.add GState.all_namespaces ns_name ns;
+  plugin.plugin_namespaces <- StringMap.add ns_name ns
+      plugin.plugin_namespaces ;
   if verbose 1 then
     Printf.eprintf "  Namespace %S installed\n%!" ns_name ;
   ns
@@ -303,7 +306,8 @@ let activate_linters () =
       match w.w_state with
       | Warning_disabled -> ()
       | Warning_sleeping
-      | Warning_enabled ->
+      | Warning_enabled
+      | Warning_forced ->
           GState.active_warnings := StringMap.add w.w_idstr w
               !GState.active_warnings
     ) !GState.all_warnings ;
@@ -312,7 +316,8 @@ let activate_linters () =
           match w.w_state with
           | Warning_disabled -> false
           | Warning_sleeping
-          | Warning_enabled -> true)
+          | Warning_enabled
+          | Warning_forced -> true)
           l.linter_warnings then begin
         l.linter_active <- true;
         GState.active_linters := l :: !GState.active_linters;
@@ -361,7 +366,9 @@ let warn ~loc ~file ~linter ?msg ?(autofix=[]) w =
   match w.w_state with
   | Warning_disabled -> ()
   | Warning_sleeping
-  | Warning_enabled ->
+  | Warning_enabled
+  | Warning_forced
+    ->
       if verbose 2 then
         Printf.eprintf "Warning %S in %s:%d set by linter %S scanning %S\n%!"
           w.w_idstr loc.loc_start.pos_fname loc.loc_start.pos_lnum
@@ -464,7 +471,8 @@ let rec filter_linters ~file linters =
           (match w.w_state with
            | Warning_disabled -> false
            | Warning_enabled
-           | Warning_sleeping -> true) &&
+           | Warning_sleeping
+           | Warning_forced -> true) &&
           not (StringSet.mem w.w_idstr file.file_warnings_done)
         ) l.linter_warnings then
         (l,f) :: filter_linters ~file linters
@@ -629,7 +637,8 @@ let add_file_classifier f =
 
 let profile_append ( profile_var, profile_option ) =
   profile_var := !profile_var @ !!profile_option ;
-  profile_option =:= []
+  profile_option =:= [];
+  Yalo_misc.Ez_config.V1.EZCONFIG.set_unloaded profile_option
 
 let eprint_config () =
   Printf.eprintf "Engine.config:\n%!";
@@ -678,9 +687,17 @@ let apply_annot z spec =
     | Warning_enabled, Warning_sleeping ->
         w.w_state <- Warning_enabled
     | Warning_enabled, Warning_disabled -> ()
+    | Warning_disabled, Warning_forced ->
+        eprintf ~loc:z.annot_loc
+          "Warning: attempt to disable a forced warning (%s)\n%!" w.w_idstr
+    | (Warning_enabled|Warning_forced), Warning_forced -> ()
     | Warning_sleeping, _ ->
         eprintf ~loc:z.annot_loc
           "Warning: sleeping mode '?' has no meaning in local \
+           annotations\n%!"
+    | Warning_forced, _ ->
+        eprintf ~loc:z.annot_loc
+          "Warning: forced mode '!' has no meaning in local \
            annotations\n%!"
   in
   try
@@ -693,6 +710,7 @@ let string_of_warning_state = function
   | Warning_disabled -> "disabled"
   | Warning_sleeping -> "sleeping"
   | Warning_enabled -> "enabled"
+  | Warning_forced -> "forced"
 
 let filter_target_messages target =
 
@@ -739,7 +757,8 @@ let filter_target_messages target =
         | [] ->
             let kept_messages =
               match m.msg_warning.w_state with
-              | Warning_enabled ->
+              | Warning_enabled
+              | Warning_forced ->
                   if verbose then
                     Printf.eprintf "  no more annot, keeping message\n%!";
                   m :: kept_messages
@@ -758,7 +777,8 @@ let filter_target_messages target =
                z.annot_loc.loc_start.pos_cnum then
               let kept_messages =
                 match m.msg_warning.w_state with
-                | Warning_enabled ->
+                | Warning_enabled
+                | Warning_forced ->
                     if verbose then
                       Printf.eprintf "        keeping earlier message\n%!";
                     m :: kept_messages
@@ -929,3 +949,61 @@ let temporary_set_option option value =
   GState.restore_after_file_lint :=
     (fun () -> Config.set_simple_option option prev_value)
     :: !GState.restore_after_file_lint
+
+let mkdesc
+    ?(tags = [])
+    ?what_it_does
+    ?why_restrict_this
+    ?known_issues
+    ?example
+    ?(configuration=[])
+    ~name msg = {
+  desc_name = name ;
+  desc_msg = msg ;
+  desc_tags = tags ;
+  desc_what_it_does = what_it_does ;
+  desc_why_restrict_this = why_restrict_this ;
+  desc_known_issues = known_issues ;
+  desc_example = example ;
+  desc_configuration = configuration ;
+}
+
+let b = Buffer.create 3000
+let desc_of_desc desc =
+  Buffer.clear b;
+  begin
+    match desc.desc_what_it_does with
+    | None -> ()
+    | Some s ->
+        Printf.bprintf b "### What it does\n%s\n" s
+  end;
+  begin
+    match desc.desc_why_restrict_this with
+    | None -> ()
+    | Some s ->
+        Printf.bprintf b "### Why restrict this ?\n%s\n" s
+  end;
+  begin
+    match desc.desc_known_issues with
+    | None -> ()
+    | Some s ->
+        Printf.bprintf b "### Known issues\n%s\n" s
+  end;
+  begin
+    match desc.desc_example with
+    | None -> ()
+    | Some s ->
+        Printf.bprintf b "### Example\n%s\n" s
+  end;
+  begin
+    match desc.desc_configuration with
+    | [] -> ()
+    | list ->
+        Printf.bprintf b "### Configuration\n\n";
+        List.iter (fun (name, desc) ->
+            Printf.bprintf b "* `%s`: %s\n" name desc
+          ) list
+  end;
+  if Buffer.length b = 0 then
+    desc.desc_msg
+  else Buffer.contents b

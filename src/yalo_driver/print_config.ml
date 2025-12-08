@@ -74,10 +74,12 @@ let eprint () =
             w.w_num
             (if w.w_set_by_default then ' ' else '!')
             (match w.w_state, w.w_level_error with
+             | Warning_forced, true -> "!e"
              | Warning_enabled, true -> "+e"
              | Warning_sleeping, true -> "?e"
              | Warning_disabled, true -> assert false
              | Warning_enabled, false -> "+w"
+             | Warning_forced, false -> "!w"
              | Warning_sleeping, false -> "?a" (* allow *)
              | Warning_disabled, false -> "--")
             w.w_name

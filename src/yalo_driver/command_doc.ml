@@ -14,6 +14,7 @@ open EzCompat
 open Ezcmd.V2
 open Ez_file.V1
 open Yalo_misc.Infix
+open Yalo_misc.Clippy
 
 open Yalo.Types
 
@@ -43,51 +44,60 @@ let clippy_gen dir =
   let impls = ref StringSet.empty in
   let groups = ref StringSet.empty in
   let namespaces = ref StringSet.empty in
-  let rules =
-    List.map Yalo_misc.Clippy.(fun w ->
-        let applicability = {
-          is_multi_part_suggestion = false ;
-          applicability = "Unresolved" ;
-        } in
-        let level = match w.w_set_by_default, w.w_level_error with
-          | true, true -> "deny"
-          | true, false -> "warn"
-          | false, _ -> "allow"
-        in
 
-        let namespace = w.w_namespace.ns_name in
-        namespaces := StringSet.add namespace !namespaces ;
+  Hashtbl.iter (fun _ plugin ->
+      let rules = ref [] in
 
-        let impl = w.w_namespace.ns_plugin.plugin_name in
-        impls := StringSet.add impl !impls ;
+      StringMap.iter (fun _ ns ->
+          IntMap.iter (fun _ w ->
+              let applicability = {
+                is_multi_part_suggestion = false ;
+                applicability = "Unresolved" ;
+              } in
+              let level = match w.w_set_by_default, w.w_level_error with
+                | true, true -> "deny"
+                | true, false -> "warn"
+                | false, _ -> "allow"
+              in
 
-        let tags = List.map (fun tag -> tag.tag_name) w.w_tags in
-        let group = String.concat ":" tags in
+              let namespace = w.w_namespace.ns_name in
+              namespaces := StringSet.add namespace !namespaces ;
 
-        List.iter (fun tag ->
-            groups := StringSet.add tag !groups) tags ;
+              let impl = w.w_namespace.ns_plugin.plugin_name in
+              impls := StringSet.add impl !impls ;
 
-        let docs = Printf.sprintf
-            "### Message\n%s\n### Description\n%s"
-            w.w_msg
-            w.w_desc
-        in
-        {
-          id = Printf.sprintf "%s %s" w.w_idstr w.w_name;
-          namespace ;
-          group ;
-          tags ;
-          level ;
-          impl ;
-          docs ;
-          applicability ;
-        }
-      ) (List.rev !Yalo.GState.all_warnings)
-  in
+              let tags = List.map (fun tag -> tag.tag_name) w.w_tags in
+              let group = String.concat ":" tags in
 
-  let json_file = dir // "lints.json" in
-  EzFile.write_file json_file ( Yalo_misc.Clippy.json_of_rules rules );
-  Printf.eprintf "File %s created\n%!" json_file;
+              List.iter (fun tag ->
+                  groups := StringSet.add tag !groups) tags ;
+
+              let docs = Printf.sprintf
+                  "### Message\n%s\n### Description\n%s"
+                  w.w_msg
+                  w.w_desc
+              in
+              let rule = {
+                id = Printf.sprintf "%s %s" w.w_idstr w.w_name;
+                namespace ;
+                group ;
+                tags ;
+                level ;
+                impl ;
+                docs ;
+                applicability ;
+              }
+              in
+              rules := rule :: !rules
+            ) ns.ns_warnings_by_num
+        ) plugin.plugin_namespaces;
+
+      let json_file = dir // plugin.plugin_name ^ ".json" in
+      EzFile.write_file json_file
+        ( Yalo_misc.Clippy.json_of_rules
+            (List.rev !rules ));
+      Printf.eprintf "File %s created\n%!" json_file;
+    ) Yalo.GState.all_plugins;
 
   let js_content =
     Printf.sprintf
@@ -130,7 +140,8 @@ let cmd command_name =
   EZCMD.sub
     command_name
     ~args
-    ~doc: "Generate the JSON documentation."
+    ~doc: "Command to generate the JSON documentation of the currently \
+           loaded plugins"
     ~man:[
       `S "DESCRIPTION";
       `Blocks [

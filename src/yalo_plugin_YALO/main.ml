@@ -39,7 +39,7 @@ let () =
     ~tags:[ tag_untyped ] 8 ;
   Both_unqualified_id.register ns
     ~tags:[ tag_typed ] section 9 ;
-  Typed_all_upper_struct.register ns
+  Both_all_upper_struct.register ns
     ~tags:[ tag_typed ] 10;
   Lex_in_one_pass.register ns
     ~tags:[ tag_lex ] {
@@ -47,7 +47,7 @@ let () =
     w_begin_fun = Some 16 ;
     w_useless_paren = Some 21 ;
   };
-  Typed_forbidden_infix.register ns section
+  Both_forbidden_infix.register ns section
     ~tags: [ tag_typed ] 12;
   Both_no_mutable_fields.register ns
     ~tags: [ tag_typed ; tag_untyped ; tag_immutable ] 13;
@@ -67,9 +67,10 @@ let () =
     w_list_append_for_one = Some 29 ;
     w_useless_sprintf = Some 30 ;
     w_suspicious_for_zero_to_len = Some 31 ;
+    w_fun_fun = Some 15 ;
   };
-  Typed_fun_fun.register ns
-    ~tags: [ tag_typed ] 15;
+  (*  Typed_fun_fun.register ns
+      ~tags: [ tag_typed ] 15; *)
   Lex_paren_semi.register ns
     ~tags: [ tag_lex ] 17;
   Lex_forbidden_keyword.register ns section

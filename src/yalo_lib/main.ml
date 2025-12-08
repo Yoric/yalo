@@ -13,6 +13,7 @@
 open EzCompat
 open Ez_file.V1
 open Yalo_misc.Infix
+open Yalo_misc.Ez_config.V1
 
 let initial_dir =
   try Sys.getcwd () with _exn ->
@@ -283,7 +284,7 @@ let init
                 loaded_profiles := StringSet.add profile !loaded_profiles;
 
                 profiles := !profiles @ !!Config.profile_profiles ;
-
+                EZCONFIG.set_unloaded Config.profile_profiles ;
                 Engine.profile_append ( GState.profiles_fileattrs,
                                         Config.profile_fileattrs ) ;
 

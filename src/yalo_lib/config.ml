@@ -28,7 +28,7 @@ let save filename =
   EZCONFIG.save_with_help config_file ~filename
 
 let append filename =
-  EZCONFIG.append config_file filename
+  EZCONFIG.append config_file filename ~override:false
 
 let get_simple_option option =
   EZCONFIG.get_simple_option config_file option
@@ -232,3 +232,39 @@ let profile_errors =
     ~short_help:"List of specifications to activate errors"
     EZCONFIG.string_list_option
     []
+
+
+module RST = struct
+
+  let title sub s =
+    Printf.printf "%s\n%s\n"
+      s (String.make (String.length s) sub)
+  let title1 = title '='
+  let title2 = title '-'
+  let title3 = title '^'
+  let title4 = title '"'
+
+end
+
+let output_rst () =
+  RST.title1 "Configuration file options";
+
+  let sections = EZCONFIG.sections config_file in
+  List.iter (fun s ->
+      let name = EZCONFIG.section_name s in
+      match name with
+        "Header" -> ()
+      | _ ->
+          RST.title2 @@
+          Printf.sprintf "Section %S" name ;
+          EZCONFIG.iter_section (fun o ->
+              let help = EZCONFIG.get_help o in
+              let help = EzString.split help '\n' in
+              Printf.printf "\n* :code:`%s` (%s): %s\n"
+                (EZCONFIG.shortname o)
+                (EZCONFIG.option_type o)
+                (String.concat "\n  " help)
+
+            ) s
+    ) sections;
+  ()

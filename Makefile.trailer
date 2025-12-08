@@ -18,3 +18,7 @@ sarif: build
 
 dune-install: build
 	opam exec -- dune install
+
+view-doc: doc
+	  echo xdg-open http://127.0.0.0:8000
+	  cd _drom/docs; php -S 127.0.0.0:8000

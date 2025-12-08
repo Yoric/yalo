@@ -15,8 +15,8 @@
    SUBSPEC =
    | + (* activate all existing warnings *)
    | - (* disactivate all existing warnings *)
-   | tag | +tag  (* activate all warnings with this tag *)
-   | -tag        (* disactivate all warnings with this tag *)
+   | #tag | +#tag  (* activate all warnings with this tag *)
+   | -#tag        (* disactivate all warnings with this tag *)
    | NS_SPEC W_SPEC*
 
    NS_SPEC =
@@ -27,10 +27,15 @@
    use it for next warnings *)
 
    W_SPEC =
-   | +tag (* activate all warnings with this tag in the plugin *)
-   | -tag (* disactivate all warnings with this tag in the plugin *)
+   | +#tag (* activate all warnings with this tag in the plugin *)
+   | -#tag (* disactivate all warnings with this tag in the plugin *)
    | +num (* activate the warning with this number in the plugin *)
    | -num (* disactivate the warning with this number in the plugin *)
+
+   '?' can be used instead of '+/-' to make a warning possible, but not
+     activated by default (can be enabled locally).
+   '!' can be used instead of '+/-' to make a warning forced, ie enabled
+     without the possibility to disable it locally.
 *)
 
 open EzCompat
@@ -80,6 +85,7 @@ let parse_spec ~spec (set_function : warning_state -> warning -> unit) =
       | ' ' -> iter0 (i+1)
       | '+' -> iter1 (i+1) ~set:Warning_enabled
       | '?' -> iter1 (i+1) ~set:Warning_sleeping
+      | '!' -> iter1 (i+1) ~set:Warning_forced
       | '-' -> iter1 (i+1) ~set:Warning_disabled
       | '#' -> iter_tag (i+1) (i+1)
       | 'A'..'Z' -> iter_ns i (i+1)
@@ -133,6 +139,9 @@ let parse_spec ~spec (set_function : warning_state -> warning -> unit) =
       | '?' ->
           let ns = set_in_ns ?set pos0 i in
           iter_ns1 ns ~set:Warning_sleeping (i+1)
+      | '!' ->
+          let ns = set_in_ns ?set pos0 i in
+          iter_ns1 ns ~set:Warning_forced (i+1)
       | '-' ->
           let ns = set_in_ns ?set pos0 i in
           iter_ns1 ns ~set:Warning_disabled (i+1)
@@ -154,6 +163,9 @@ let parse_spec ~spec (set_function : warning_state -> warning -> unit) =
       | '?' ->
           let ns = set_in_ns ?set pos0 pos1 in
           iter_ns1 ns ~set:Warning_sleeping (i+1)
+      | '!' ->
+          let ns = set_in_ns ?set pos0 pos1 in
+          iter_ns1 ns ~set:Warning_forced (i+1)
       | '-' ->
           let ns = set_in_ns ?set pos0 pos1 in
           iter_ns1 ns ~set:Warning_disabled (i+1)
@@ -167,6 +179,7 @@ let parse_spec ~spec (set_function : warning_state -> warning -> unit) =
       | ',' -> iter0 (i+1)
       | '+' -> iter_ns1 ns ~set:Warning_enabled (i+1)
       | '?' -> iter_ns1 ns ~set:Warning_sleeping (i+1)
+      | '!' -> iter_ns1 ns ~set:Warning_forced (i+1)
       | '-' -> iter_ns1 ns ~set:Warning_disabled (i+1)
       | _ -> unexpected_char spec i
 
@@ -204,6 +217,9 @@ let parse_spec ~spec (set_function : warning_state -> warning -> unit) =
       | '?' ->
           set_namespace_tag ns ~set ~pos0 i;
           iter_ns1 ns ~set:Warning_sleeping (i+1)
+      | '!' ->
+          set_namespace_tag ns ~set ~pos0 i;
+          iter_ns1 ns ~set:Warning_forced (i+1)
       | '-' ->
           set_namespace_tag ns ~set ~pos0 i;
           iter_ns1 ns ~set:Warning_disabled (i+1)
@@ -228,6 +244,9 @@ let parse_spec ~spec (set_function : warning_state -> warning -> unit) =
       | '?' ->
           set_namespace_num ns ~set ~pos0 i;
           iter_ns1 ns ~set:Warning_sleeping (i+1)
+      | '!' ->
+          set_namespace_num ns ~set ~pos0 i;
+          iter_ns1 ns ~set:Warning_forced (i+1)
       | '-' ->
           set_namespace_num ns ~set ~pos0 i;
           iter_ns1 ns ~set:Warning_disabled (i+1)

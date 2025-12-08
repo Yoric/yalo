@@ -35,10 +35,13 @@ type command_kind =
   | LOAD_PLUGINS
   | NO_PLUGINS
 
+let _ : command_kind = NO_PLUGINS
+
 let commands = [
   "lint", LOAD_PLUGINS, Command_lint.cmd ;
-  "lint-no-plugins", NO_PLUGINS, Command_lint.cmd ;
+  (*  "lint-static", NO_PLUGINS, Command_lint.cmd ; *)
   "doc", LOAD_PLUGINS, Command_doc.cmd ;
+
 ]
 
 
@@ -71,17 +74,28 @@ let main () =
         | NO_PLUGINS -> ()
     ) commands ;
 
+  if !Args.arg_output_options_rst then begin
+    Yalo.Config.output_rst ();
+    exit 0
+  end;
+
   let _fs = Init.get_fs ~needs_to_load_plugins: !needs_to_load_plugins () in
 
   (* sub-commands arguments may come from plugins... *)
   let commands =
     List.map (fun (name, _kind, sub) -> sub name) commands
+    @ !Yalo.GState.plugin_commands
   in
+  let common_args = [] in
+  if !Args.arg_output_commands_rst then begin
+    Printf.printf "%s%!" (EZCMD.to_rst ~name:"yalo" commands common_args);
+    exit 0
+  end;
   MAIN.main
     (* ~on_error:Cobol_common.keep_temporary_files *)
     (* ~on_exit:Cobol_common.exit *)
     (* ~print_config:Config.print *)
-    ~common_args:[]
+    ~common_args
     ~argv
     commands
   ;
