@@ -419,13 +419,13 @@ let main
     (List.length !GState.active_linters)
     (StringMap.cardinal !GState.active_warnings);
 
-  if !nerrors > 0 then exit 2;
-
   begin match autofix with
     | None -> ()
     | Some inplace ->
         Autofix.apply ~inplace messages ;
   end;
+
+  if !nerrors > 0 then exit 2;
   ()
 
 let activate_warnings_and_linters

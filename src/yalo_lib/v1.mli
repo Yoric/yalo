@@ -36,6 +36,7 @@ module YALO_TYPES : sig
   type folder
   type filepath = string list
   type fs
+  type warning_desc
 
   type scan_kind =
     | Scan_disabled
@@ -170,6 +171,24 @@ module YALO : sig
   val string_of_loc : location -> string
   val eprintf :
     ?loc:YALO_TYPES.location -> ('a, out_channel, unit) format -> 'a
+
+  val mkdesc :
+    ?tags:string list ->
+    ?what_it_does:string ->
+    ?why_restrict_this:string ->
+    ?known_issues:string ->
+    ?example:string ->
+    ?configuration:(string * string) list ->
+    name:string -> string -> YALO_TYPES.warning_desc
+  val new_warning_of_desc :
+    YALO_TYPES.namespace ->
+    ?tags:YALO_TYPES.tag list ->
+    ?set_by_default:bool ->
+    desc:YALO_TYPES.warning_desc ->
+    int -> YALO_TYPES.warning
+
+  val new_command : YALO_TYPES.plugin -> Ezcmd.V2.EZCMD.TYPES.sub -> unit
+
 end
 
 

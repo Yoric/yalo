@@ -38,6 +38,7 @@ let new_plugin ?(version="0.1.0") ?(args=[]) plugin_name =
   let ns = { plugin_name ;
              plugin_version = version ;
              plugin_languages = StringMap.empty ;
+             plugin_namespaces = StringMap.empty ;
              plugin_args = args;
            }
   in
@@ -119,6 +120,8 @@ let new_namespace plugin ns_name =
              ns_linters = StringMap.empty;
            } in
   Hashtbl.add GState.all_namespaces ns_name ns;
+  plugin.plugin_namespaces <- StringMap.add ns_name ns
+      plugin.plugin_namespaces ;
   if verbose 1 then
     Printf.eprintf "  Namespace %S installed\n%!" ns_name ;
   ns
@@ -634,7 +637,8 @@ let add_file_classifier f =
 
 let profile_append ( profile_var, profile_option ) =
   profile_var := !profile_var @ !!profile_option ;
-  profile_option =:= []
+  profile_option =:= [];
+  Yalo_misc.Ez_config.V1.EZCONFIG.set_unloaded profile_option
 
 let eprint_config () =
   Printf.eprintf "Engine.config:\n%!";
@@ -945,3 +949,61 @@ let temporary_set_option option value =
   GState.restore_after_file_lint :=
     (fun () -> Config.set_simple_option option prev_value)
     :: !GState.restore_after_file_lint
+
+let mkdesc
+    ?(tags = [])
+    ?what_it_does
+    ?why_restrict_this
+    ?known_issues
+    ?example
+    ?(configuration=[])
+    ~name msg = {
+  desc_name = name ;
+  desc_msg = msg ;
+  desc_tags = tags ;
+  desc_what_it_does = what_it_does ;
+  desc_why_restrict_this = why_restrict_this ;
+  desc_known_issues = known_issues ;
+  desc_example = example ;
+  desc_configuration = configuration ;
+}
+
+let b = Buffer.create 3000
+let desc_of_desc desc =
+  Buffer.clear b;
+  begin
+    match desc.desc_what_it_does with
+    | None -> ()
+    | Some s ->
+        Printf.bprintf b "### What it does\n%s\n" s
+  end;
+  begin
+    match desc.desc_why_restrict_this with
+    | None -> ()
+    | Some s ->
+        Printf.bprintf b "### Why restrict this ?\n%s\n" s
+  end;
+  begin
+    match desc.desc_known_issues with
+    | None -> ()
+    | Some s ->
+        Printf.bprintf b "### Known issues\n%s\n" s
+  end;
+  begin
+    match desc.desc_example with
+    | None -> ()
+    | Some s ->
+        Printf.bprintf b "### Example\n%s\n" s
+  end;
+  begin
+    match desc.desc_configuration with
+    | [] -> ()
+    | list ->
+        Printf.bprintf b "### Configuration\n\n";
+        List.iter (fun (name, desc) ->
+            Printf.bprintf b "* `%s`: %s\n" name desc
+          ) list
+  end;
+  if Buffer.length b = 0 then
+    desc.desc_msg
+  else Buffer.contents b

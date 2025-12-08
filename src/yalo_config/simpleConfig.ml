@@ -46,6 +46,7 @@ and 'a config_option =
     option_default : 'a;
     mutable option_hooks : (unit -> unit) list;
     option_section : config_section;
+    mutable option_loaded : bool ;
 
     (* level indicates the expertise needed to see this option. 0
        means that anybody should see this option, while higher level are
@@ -171,7 +172,9 @@ let create_section_option
       option_hooks = [];
       option_section = section;
       option_level = level;
-      option_volatile = false;}
+      option_volatile = false;
+      option_loaded = false;
+    }
   in
   section.section_options <-
     section.section_options @ [ (Obj.magic o : Obj.t config_option) ];
@@ -190,6 +193,8 @@ let create_section_option
           default_value
     end;
   o
+
+let set_unloaded o = o.option_loaded <- false
 
 let create_option config_file option_names
     ?short_help long_help ?level
@@ -236,7 +241,7 @@ let string_of_load_error file error =
       Printf.sprintf "Setting option %s failed with %s" o
          error
 
-let really_load filename sections =
+let really_load filename ?(override=true) sections =
   let temp_file = FileAbstract.add_suffix filename ".tmp" in
   if FileAbstract.exists temp_file then
     raise (LoadError (filename, FileHasTempBackup temp_file));
@@ -255,27 +260,31 @@ let really_load filename sections =
     let list = SimpleConfigOCaml.parse filename ic in
     let affect_option o =
       try
-        begin try
-            o.option_value <-
-              o.option_class.from_value (find_value o.option_name list)
-          with
-            SideEffectOption -> ()
-        end;
+        if override || (not o.option_loaded) then
+          begin try
+              let v = o.option_class.from_value
+                  (find_value o.option_name list)
+              in
+              o.option_value <- v;
+              o.option_loaded <- true
+            with
+              SideEffectOption -> ()
+          end;
         exec_class_hooks o;
         exec_option_hooks o
       with
       | SideEffectOption -> ()
       | OptionNotFound ->
-        if !print_options_not_found then
-          begin
-            Printf.fprintf stderr "Option ";
-            List.iter (fun s -> Printf.fprintf stderr "%s " s) o.option_name;
-            Printf.fprintf stderr "not found in %s\n" (FileAbstract.to_string filename);
-          end
+          if !print_options_not_found then
+            begin
+              Printf.fprintf stderr "Option ";
+              List.iter (fun s -> Printf.fprintf stderr "%s " s) o.option_name;
+              Printf.fprintf stderr "not found in %s\n" (FileAbstract.to_string filename);
+            end
       | e ->
-        raise (LoadError (filename,
-                          SetOptionFailed (String.concat "." o.option_name,
-                                           Printexc.to_string e)))
+          raise (LoadError (filename,
+                            SetOptionFailed (String.concat "." o.option_name,
+                                             Printexc.to_string e)))
             (*
           Printf.fprintf stderr "Exception: %s while handling option:"
             (Printexc.to_string e);
@@ -295,8 +304,8 @@ let really_load filename sections =
     list
   with
   | e ->
-    close_in ic;
-    raise e
+      close_in ic;
+      raise e
 
 
 let with_help = ref false
@@ -312,11 +321,14 @@ let load opfile =
     Not_found | Sys_error _ ->
       (* Printf.fprintf stderr "No %s found\n" opfile.file_name *) ()
 
-let append opfile filename =
+let append opfile ?(override=true) filename =
   try
+    let sections = really_load ~override filename opfile.file_sections in
     opfile.file_rc <-
-      really_load filename opfile.file_sections @
-        opfile.file_rc
+      if override then
+        sections @ opfile.file_rc
+    else
+        opfile.file_rc @ sections
   with
     Not_found -> Printf.fprintf stderr "No %s found\n" (FileAbstract.to_string filename)
 
@@ -871,7 +883,11 @@ let rec value_to_tuple2 (c1, c2 as cs) v =
   | _ -> failwith "Options: not a tuple2 option"
 
 let tuple2_option p =
-  define_option_class "tuple2_option" (value_to_tuple2 p) (tuple2_to_value p)
+  define_option_class
+    (Printf.sprintf "(%s * %s)"
+       (fst p).class_name
+       (snd p).class_name)
+       (value_to_tuple2 p) (tuple2_to_value p)
 
 let tuple3_to_value (c1, c2, c3) (a1, a2, a3) =
   SmallList [to_value c1 a1; to_value c2 a2; to_value c3 a3]

@@ -35,8 +35,8 @@ module V1 = struct
       end;
       EzConfig.load config_file
 
-    let append config_file filename =
-      EzConfig.append config_file (FILE.of_string filename)
+    let append config_file ?override filename =
+      EzConfig.append config_file ?override (FILE.of_string filename)
 
     let save ?filename config_file =
       begin match filename with

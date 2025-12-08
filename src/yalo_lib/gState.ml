@@ -64,3 +64,5 @@ let folder_updater =
 let messages = ref ( [] : message list )
 
 let restore_after_file_lint = ref ( [] : (unit -> unit) list)
+
+let plugin_commands = ref ([] : Ezcmd.V2.EZCMD.TYPES.sub list)
