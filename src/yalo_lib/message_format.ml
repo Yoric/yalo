@@ -326,7 +326,7 @@ let codeclimate_issues (messages: message list): json list =
     OBJECT [
       ("type", STRING "issue");
       ("check_name", STRING m.msg_warning.w_idstr);
-      ("description", STRING m.msg_warning.w_desc);
+      ("description", STRING m.msg_string);
       ("fingerprint", STRING m.msg_idstr);
       ("content", NULL);
       ("categories", LIST [STRING "Bug Risk"]);
