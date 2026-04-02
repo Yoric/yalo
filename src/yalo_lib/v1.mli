@@ -127,11 +127,11 @@ module YALO : sig
   val tag_danger : tag
 
   (** Emit a warning at the given location.
-      @param fingerprint A unique identifier for this warning occurrence. May be
-        used by dashboards, for instance, to trace issues through successive runs.
-        If unspecified, default to a Marshal-based key that is often sufficient
-        but not guaranteed to be stable across successive builds or versions of
-        YALO. *)
+      @param fingerprint A unique identifier for this warning occurrence.
+        May be used by dashboards, for instance, to trace issues through
+        successive runs. If unspecified, default to a Marshal-based key
+        that is often sufficient but not guaranteed to be stable across
+        successive builds or versions of YALO. *)
   val warn : loc:location -> file:file -> linter:linter ->
     ?msg:string ->
     ?autofix:(YALO_TYPES.location * string) list ->
